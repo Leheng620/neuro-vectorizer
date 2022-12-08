@@ -15,10 +15,11 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Value.h"
-#include <map>
-#include <vector>
+#include <fstream>
+#include <filesystem>
 
 using namespace llvm;
+namespace fs = std::filesystem;
 
 namespace Parser
 {
@@ -31,10 +32,6 @@ namespace Parser
         {
             bool Changed = false;
 
-            errs() << "here"
-                   << "\n";
-
-            /* *******Implementation Starts Here******* */
             BranchProbabilityInfo &bpi = getAnalysis<BranchProbabilityInfoWrapperPass>().getBPI();
             // BlockFrequencyInfo &bfi = getAnalysis<BlockFrequencyInfoWrapperPass>().getBFI();
             LoopInfo &li = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
@@ -105,15 +102,30 @@ namespace Parser
                 }
             }
 
-            errs() << "Number of Basic Blocks: " << countBB << "\n";
-            errs() << "Number of Branches: " << countBranches << "\n";
-            errs() << "Number of Total Instructions: " << countTotInsts << "\n";
-            errs() << "Number of Integer Instructions: " << countIntInsts << "\n";
-            errs() << "Number of Float Instructions: " << countFPInsts << "\n";
-            errs() << "Number of Loads: " << countLoads << "\n";
-            errs() << "Number of Stores: " << countStores << "\n";
+            StringRef funcName = L->getHeader()->getParent()->getName();
+            StringRef fileString = L->getHeader()->getParent()->getParent()->getSourceFileName();
+            fs::path filePath = (std::string)fileString;
+            std::string fileName = filePath.filename();
+            
+            if (funcName != "main") {
+                errs() << "Number of Basic Blocks: " << countBB << "\n";
+                errs() << "Number of Branches: " << countBranches << "\n";
+                errs() << "Number of Total Instructions: " << countTotInsts << "\n";
+                errs() << "Number of Integer Instructions: " << countIntInsts << "\n";
+                errs() << "Number of Float Instructions: " << countFPInsts << "\n";
+                errs() << "Number of Loads: " << countLoads << "\n";
+                errs() << "Number of Stores: " << countStores << "\n";
 
-            /* *******Implementation Ends Here******* */
+                // Output/append to .csv file
+                std::ofstream outfile;
+                outfile.open("features.csv", std::ofstream::out | std::ofstream::app);
+                if (!outfile) {
+                    errs() << "File creation/append failed!" << "\n";
+                } else {
+                    outfile << fileName << "," << countBB << "," << countBranches << "," << countTotInsts << "," 
+                        << countIntInsts << "," << countFPInsts << "," << countLoads << "," << countStores << std::endl;
+                }
+            }
 
             return Changed;
         }

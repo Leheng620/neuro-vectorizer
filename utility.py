@@ -225,7 +225,16 @@ def get_block(i,code):
 def get_vectorized_code(code):
     '''Used by get_vectorized_codes function to do the parsing 
     of a single code to detect the loops, inject commented pragmas,
-    and collect data.''' 
+    and collect data.
+    
+    Params:
+        code: list[str] - Each code is read from files to a list of lines
+
+    Returns:
+        for_loop_indices: list[tuple[int, int]] - the beginning and end indices of a loop
+        pragma_indices: indice of the inserted pragma
+        new_code: Code after inserting the pragma before each loop
+    ''' 
     new_code = []
     for_loops_indices = []
     i=0
