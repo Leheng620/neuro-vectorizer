@@ -101,13 +101,16 @@ namespace Parser
                     }
                 }
             }
+            auto loopDepth = L->getLoopDepth();
 
             StringRef funcName = L->getHeader()->getParent()->getName();
             StringRef fileString = L->getHeader()->getParent()->getParent()->getSourceFileName();
             fs::path filePath = (std::string)fileString;
             std::string fileName = filePath.filename();
             
-            if (funcName != "main") {
+            if (funcName != "main" && L->isInnermost()) {
+                errs() << "--------------" << fileName << "--------------" << "\n";
+                errs() << "Loop Depth: " << loopDepth << "\n";
                 errs() << "Number of Basic Blocks: " << countBB << "\n";
                 errs() << "Number of Branches: " << countBranches << "\n";
                 errs() << "Number of Total Instructions: " << countTotInsts << "\n";
@@ -122,7 +125,7 @@ namespace Parser
                 if (!outfile) {
                     errs() << "File creation/append failed!" << "\n";
                 } else {
-                    outfile << fileName << "," << countBB << "," << countBranches << "," << countTotInsts << "," 
+                    outfile << fileName << "," << loopDepth << "," << countBB << "," << countBranches << "," << countTotInsts << "," 
                         << countIntInsts << "," << countFPInsts << "," << countLoads << "," << countStores << std::endl;
                 }
             }

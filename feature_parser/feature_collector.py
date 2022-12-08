@@ -1,5 +1,7 @@
 import os
 import argparse
+import csv
+import shutil
 
 def parse_args() -> argparse.Namespace:
     """Parse commandline arguments."""
@@ -27,9 +29,14 @@ def main(args: argparse.Namespace) -> None:
         if name.endswith(".c") and not name.startswith('header.c') 
         and not name.startswith('aux_AST_embedding_code.c')]
 
+    # Remove pre-existing feature file and dir
     if os.path.exists("features.csv"):
         print("Removing pre-existing features.csv...")
         os.remove("features.csv")
+    
+    with open("features.csv", "w") as f:
+        writer = csv.writer(f)
+        writer.writerow(["filename", "loopDepth", "BBs", "branches", "totalInsts", "intInsts", "fpInsts", "loads", "stores"])
 
     for file in orig_train_files:
         file.removesuffix(".c")
