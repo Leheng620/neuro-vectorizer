@@ -53,6 +53,7 @@ def generate_cmd(args):
     return command
 
 def ExtractFeaturesForDir(args, dir, prefix):
+    # print("executing ExtractFeaturesForDir " + str(dir))
     sys.stderr.write('visiting dir: ' + str(dir)+"\n")
     outputFileName = TMP_DIR + prefix + dir.split('/')[-1] + ".gz"
     command = generate_cmd(args)
@@ -84,6 +85,7 @@ def ExtractFeaturesForDir(args, dir, prefix):
 
 
 def ExtractFeaturesForDirsList(args, dirs):
+    # print("executing ExtractFeaturesForDirsList")
     global TMP_DIR
     TMP_DIR = args.outdir + "/feature_extractor/"
     if os.path.exists(TMP_DIR):
@@ -91,6 +93,7 @@ def ExtractFeaturesForDirsList(args, dirs):
     os.makedirs(TMP_DIR)
     try:
         p = multiprocessing.Pool(int(args.num_threads))
+        # print("aaa")
         p.starmap(ParallelExtractDir, zip(itertools.repeat(args), dirs))
         #output_files = os.listdir(TMP_DIR)
         #for f in output_files:
@@ -101,6 +104,8 @@ def ExtractFeaturesForDirsList(args, dirs):
 
 
 if __name__ == '__main__':
+    # print("executing extract-c.py")
+
     parser = ArgumentParser()
     parser.add_argument("-clang-path", "--clang-path", dest="clang_path", required=True)
     parser.add_argument("--include-path", dest="include_path", default=None)
@@ -114,6 +119,7 @@ if __name__ == '__main__':
 
     if args.file is not None:
         command = generate_cmd(args)
+        # print(command)
         command.extend(["--file-path", args.file])
         #command = ['python', 'cparser.py', "--clangpath" arg.clang_path, "--file-path", arg.file]
         os.system(command)
@@ -122,6 +128,7 @@ if __name__ == '__main__':
         to_extract = subdirs
         if len(subdirs) == 0:
             to_extract = [args.dir.rstrip('/')]
+        # print(to_extract)
         ExtractFeaturesForDirsList(args, to_extract)
 
 

@@ -71,12 +71,13 @@ tune.run("PPO",
             "sgd_minibatch_size": 100000,
             "env": "autovec",
             "horizon":  1,
-            "num_gpus": 0,
-            "model":{'fcnet_hiddens':[128,128]},
+            "num_gpus": 1,
+            "model":{'fcnet_hiddens':[32,32]},
             "num_workers": 1,
             "env_config":{'dirpath':args.rollout_dir,'new_rundir':'./new_rollout_garbage',
                          'inference_mode':True, 'new_train_data':args.new_train_data,
                          'compile':args.compile}
             },
-        loggers=[TBXLogger]
+        loggers=[TBXLogger],
+        local_dir="~/zjw/Courses/Adv_Compiler/proj/neuro-vectorizer/test_results/"
 )

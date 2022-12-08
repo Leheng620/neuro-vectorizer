@@ -36,9 +36,9 @@ import os
 import logging
 
 from extractor_c import CExtractor
-from config import Config
-from my_model import Code2VecModel
-from path_context_reader import EstimatorAction
+from code2vec.config import Config
+from code2vec.my_model import Code2VecModel
+from code2vec.path_context_reader import EstimatorAction
 
 from utility import get_bruteforce_runtimes, get_O3_runtimes, get_snapshot_from_code, get_runtime, get_vectorized_codes, init_runtimes_dict, get_encodings_from_local, MAX_LEAF_NODES, pragma_line
 
@@ -59,7 +59,8 @@ class NeuroVectorizerEnv(gym.Env):
         '''Runtimes dict to stored programs the RL agent explored.
          This saves execution and compilation time due to dynamic programming.'''
         self.runtimes = init_runtimes_dict(self.new_testfiles,self.num_loops,
-                        len(self.vec_action_meaning),len(self.interleave_action_meaning))
+                        len(self.vec_action_meaning),len(self.interleave_action_meaning),
+                        len(self.distribute_action_meaning))
         '''Observations dictionary to store AST encodings of programs explored by the RL agent. 
         It saves time when the RL agent explores a program it explored before.
         It is also initialized from obs_encodings.pkl file to further save time.''' 
@@ -105,16 +106,19 @@ class NeuroVectorizerEnv(gym.Env):
         Modify to match your hardware and programs.
         '''
         self.vec_action_meaning = [1,2,4,8,16,32,64] # TODO: change this to match your hardware
-        self.interleave_action_meaning=[1,2,4,8,16] # TODO: change this to match your hardware
+        self.interleave_action_meaning = [1,2,4,8,16] # TODO: change this to match your hardware
+        self.distribute_action_meaning = ["enable", "disable"]
+        # self.distribute_action_meaning = [""]
         self.action_space = spaces.Tuple([spaces.Discrete(len(self.vec_action_meaning)),
-                                        spaces.Discrete(len(self.interleave_action_meaning))])
+                                        spaces.Discrete(len(self.interleave_action_meaning)),
+                                        spaces.Discrete(len(self.distribute_action_meaning))])
         '''The observation space is bounded by the word dictionary 
         the preprocessing generated.'''
         self.observation_space = spaces.Tuple(
                                  [spaces.Box(0,self.code2vec.vocabs.token_vocab.size,shape=(self.config.MAX_CONTEXTS,),dtype = np.int32,)]
                                  +[spaces.Box(0,self.code2vec.vocabs.path_vocab.size,shape=(self.config.MAX_CONTEXTS,),dtype = np.int32,)]
                                  +[spaces.Box(0,self.code2vec.vocabs.token_vocab.size,shape=(self.config.MAX_CONTEXTS,),dtype = np.int32,)]
-                                 +[spaces.Box(0,1,shape=(self.config.MAX_CONTEXTS,),dtype = np.bool)]
+                                 +[spaces.Box(0,1,shape=(self.config.MAX_CONTEXTS,),dtype = np.float32)]
                                  )
     def parse_train_data(self):
         ''' Parse the training data. '''
@@ -138,7 +142,7 @@ class NeuroVectorizerEnv(gym.Env):
         self.path_extractor = CExtractor(self.config,clang_path=os.environ['CLANG_PATH'],max_leaves=MAX_LEAF_NODES)
         self.train_input_reader = self.code2vec._create_data_reader(estimator_action=EstimatorAction.Train)
     
-    def get_reward(self,new_code,current_filename,VF_idx,IF_idx):
+    def get_reward(self,new_code,current_filename,VF_idx,IF_idx,DIST_idx):
         '''Calculates the RL agent's reward. The reward is the 
         execution time improvement after injecting the pragma
         normalized to -O3.'''
@@ -146,11 +150,11 @@ class NeuroVectorizerEnv(gym.Env):
         f.write(''.join(new_code))
         f.close()
         if self.compile:
-            if self.runtimes[current_filename][self.current_pragma_idx][VF_idx][IF_idx]:
-                runtime = self.runtimes[current_filename][self.current_pragma_idx][VF_idx][IF_idx]
+            if self.runtimes[current_filename][self.current_pragma_idx][VF_idx][IF_idx][DIST_idx]:
+                runtime = self.runtimes[current_filename][self.current_pragma_idx][VF_idx][IF_idx][DIST_idx]
             else:            
                 runtime = get_runtime(self.new_rundir,new_code,current_filename)
-                self.runtimes[current_filename][self.current_pragma_idx][VF_idx][IF_idx]=runtime
+                self.runtimes[current_filename][self.current_pragma_idx][VF_idx][IF_idx][DIST_idx]=runtime
             if self.O3_runtimes[current_filename]==None:
                 reward = 0
                 logger.warning('Program '+current_filename+' does not compile in two seconds.'+
@@ -174,10 +178,15 @@ class NeuroVectorizerEnv(gym.Env):
                       'improvement geomean so far:',str(round(geomean,2))+'X')
             VF = self.vec_action_meaning[VF_idx]
             IF = self.interleave_action_meaning[IF_idx]
+            DIST = self.distribute_action_meaning[DIST_idx]
             opt_runtime_sofar=self.get_opt_runtime(current_filename,self.current_pragma_idx)
-            logger.info(current_filename+' runtime '+str(runtime)+' O3 ' + 
-                        str(self.O3_runtimes[current_filename]) +' reward '+str(reward)+
-                        ' opt '+str(opt_runtime_sofar)+" VF "+str(VF)+" IF "+str(IF))
+
+            log_info = current_filename+' runtime '+str(runtime)+' O3 ' + \
+                        str(self.O3_runtimes[current_filename]) +' reward '+str(reward)+ \
+                        ' opt '+str(opt_runtime_sofar)+" VF "+str(VF)+" IF "+str(IF)+" DIST "+DIST
+            logger.info(log_info)
+            os.system("echo " + log_info + " >> ~/zjw/Courses/Adv_Compiler/proj/neuro-vectorizer/log/LOG_vec_inter_dist_test_1.txt")
+
         else:
             # can't calculate the reward without compile/runtime.
             reward = 0
@@ -188,8 +197,9 @@ class NeuroVectorizerEnv(gym.Env):
         min_runtime = float('inf')
         for VF_idx in self.runtimes[current_filename][self.current_pragma_idx]:
             for IF_idx in VF_idx:
-                if IF_idx:
-                    min_runtime = min(min_runtime,IF_idx)
+                for DIST_idx in IF_idx:
+                    if DIST_idx:
+                        min_runtime = min(min_runtime,DIST_idx)
         return min_runtime
                 
     def reset(self):
@@ -243,15 +253,17 @@ class NeuroVectorizerEnv(gym.Env):
     def step(self,action):
         '''The RL environment step function. Takes action and applies it as
         VF/IF pragma for the parsed loop.'''
-        done = True # RL horizon = 1 
+        done = True # RL horizon = 1
         action = list(np.reshape(np.array(action),(np.array(action).shape[0],)))
         VF_idx = action[0]
         IF_idx = action[1]
+        DIST_idx = action[2]
         VF = self.vec_action_meaning[VF_idx]
         IF = self.interleave_action_meaning[IF_idx]
+        DIST = self.distribute_action_meaning[DIST_idx]
         current_filename = self.new_testfiles[self.current_file_idx]
-        self.new_code[self.pragmas_idxs[current_filename][self.current_pragma_idx]] = pragma_line.format(VF,IF)
-        reward = self.get_reward(self.new_code,current_filename,VF_idx,IF_idx)
+        self.new_code[self.pragmas_idxs[current_filename][self.current_pragma_idx]] = pragma_line.format(VF,IF,DIST)
+        reward = self.get_reward(self.new_code,current_filename,VF_idx,IF_idx,DIST_idx)
         #print("VF",VF,"IF",IF)
         #print('reward:', reward, 'O3',self.O3_runtimes[current_filename])
         self.current_pragma_idx += 1

@@ -38,23 +38,25 @@ ray.init()
 register_env("autovec", lambda config:NeuroVectorizerEnv(config))
 
 tune.run("PPO",
-        #restore = "~/ray_results/PPO_*/checkpoint_240/checkpoint-240",
+        # restore = "~/zjw/Courses/Adv_Compiler/proj/neuro-vectorizer/ray_results/test/",
         checkpoint_freq  = 1,
         name = "neurovectorizer_train",
         stop = {"episodes_total": 100000},
+        # resources_per_trial={"cpu": 1, "gpu": 1},
         config={
             "sample_batch_size": 25,
             "train_batch_size": 500,
             "sgd_minibatch_size": 20,
             "num_sgd_iter":20,
-            #"lr":5e-5,
+            "lr":5e-3,
             #"vf_loss_coeff":0.5,
             "env": "autovec",
             "horizon":  1,
-            "num_gpus": 0,
-            "model":{'fcnet_hiddens':[128,128]},
+            "num_gpus": 1,
+            "model":{'fcnet_hiddens':[32,32]},
             "num_workers": 1,
             "env_config":{'dirpath':'./training_data','new_rundir':'./new_garbage'}
             },
-        loggers=[TBXLogger]
+        loggers=[TBXLogger],
+        local_dir="~/zjw/Courses/Adv_Compiler/proj/neuro-vectorizer/ray_results/"
 )

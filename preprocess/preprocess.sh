@@ -13,12 +13,14 @@
 # DM19-0540
 
 # Configuration is relative to this script
-SCRIPT_LOC=$(realpath "$0")
-SCRIPT_PATH="$(dirname "$SCRIPT_LOC")"
-. $SCRIPT_PATH/configure.sh
+#SCRIPT_LOC=$(realpath "$0")
+#SCRIPT_PATH="$(dirname "$SCRIPT_LOC")"
+SCRIPT_PATH="$(pwd)"
+echo $SCRIPT_PATH
+. ./configure.sh
 
-[ ! -d ${CODE2VEC_LOC} ] && echo "code2vec location does not exist!" && exit 1
-[ ! -d ${SOURCE_DIR} ] && echo "source directory does not exist!" && exit 1
+[ ! -d ${CODE2VEC_LOC} ] && echo "code2vec location does not exist!"
+[ ! -d ${SOURCE_DIR} ] && echo "source directory does not exist!"
 
 DATA_ROOT=${CODE2VEC_LOC}/data/${DATASET_NAME}
 RAW_DATA_FILE=${DATA_ROOT}/${DATASET_NAME}.raw.txt
@@ -28,17 +30,17 @@ VAL_DATA_FILE=${DATA_ROOT}/${DATASET_NAME}.val.raw.txt
 TEST_DATA_FILE=${DATA_ROOT}/${DATASET_NAME}.test.raw.txt
 
 # Ensure previous runs are cleared out...
-rm -rf $DATA_ROOT
-mkdir -p $DATA_ROOT
+#rm -rf $DATA_ROOT
+#mkdir -p $DATA_ROOT
 
 echo "Extracting paths from data set..."
-${PYTHON} ${SCRIPT_PATH}/extract-c.py --dir ${SOURCE_DIR} -outdir ${DATA_ROOT} ${SKIP_DECLS} -maxleaves ${MAX_LEAVES} --num_threads ${NUM_THREADS} --clang-path ${CLANG_PATH} --include-path ${SOURCE_DIR} > ${RAW_DATA_FILE} 2>> ${DATA_ROOT}/stderr.txt
+#${PYTHON} ${SCRIPT_PATH}/extract-c.py --dir ${SOURCE_DIR} -outdir ${DATA_ROOT} ${SKIP_DECLS} -maxleaves ${MAX_LEAVES} --num_threads ${NUM_THREADS} --clang-path ${CLANG_PATH} --include-path ${SOURCE_DIR} > ${RAW_DATA_FILE} 2>> ${DATA_ROOT}/stderr.txt
 echo "Finished extracting paths from data set"
-sort -u -R -S ${MEM_PERCENT}% --parallel ${NUM_PROCESSORS} --output=${SORTED_DATA_FILE} ${RAW_DATA_FILE}
+#sort -u -R -S ${MEM_PERCENT}% --parallel ${NUM_PROCESSORS} --output=${SORTED_DATA_FILE} ${RAW_DATA_FILE}
 
 echo "Calculating lines"
 n=$(wc -l < ${SORTED_DATA_FILE})
-[[ ! "$n" -gt "0" ]] && echo "Extracted no lines. (missing source files?)" && exit 1
+[[ ! "$n" -gt "0" ]] && echo "Extracted no lines. (missing source files?)"
 
 n=$(echo "x=${n} * ${DOWNSAMPLE}; scale = 0; x / 1" | bc -l)
 train_n=$(echo "x=${n} * 0.99; scale = 0; x / 1" | bc -l)

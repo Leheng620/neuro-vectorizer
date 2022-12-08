@@ -50,7 +50,7 @@
 
 # External dependencies
 # CLANG_PATH - should be set to the location of lib clang
-CLANG_PATH=/usr/lib/llvm-6.0/lib/libclang.so.1
+CLANG_PATH=/usr/local/lib/libclang.so
 # CLANG_BIN_PATH should be set to the location of bin/clang
 CLANG_BIN_PATH=/usr/bin/clang
 # CODE2VEC_LOC - should be the location of base codevec

@@ -41,14 +41,15 @@ logger = logging.getLogger(__name__)
 MAX_LEAF_NODES = os.environ['MAX_LEAF_NODES']
 TEST_SHELL_COMMAND_TIMEOUT = os.environ['TEST_SHELL_COMMAND_TIMEOUT']
 # pragma line injected for each loop
-pragma_line = '#pragma clang loop vectorize_width({0}) interleave_count({1})\n'
+pragma_line = '#pragma clang loop vectorize_width({0}) interleave_count({1}) distribute({2})\n'
+# pragma_line = '#pragma clang loop vectorize_width({0}) interleave_count({1}){2}\n'
 
-def init_runtimes_dict(files,num_loops,VF_len,IF_len):
+def init_runtimes_dict(files,num_loops,VF_len,IF_len,DIST_len):
     '''Used to initialize runtimes dict that stores 
     runtimes for all the files and loops for 
     different VF/IF during training to save time.'''
     runtimes = {}
-    one_program_runtimes = [[None]*IF_len for vf in range(VF_len)]
+    one_program_runtimes = [[[None] * DIST_len for fi in range(IF_len)] for vf in range(VF_len)]
     for f in files:
         runtimes[f] = {}
         for l in range(num_loops[f]):
@@ -181,7 +182,7 @@ def run_llvm_test_shell_command(rundir,filename):
     '''runs the file after the pragma is injected 
     and returns runtime.'''
     full_path_header = os.path.join(rundir, 'header.c')
-    cmd1 = 'timeout ' + TEST_SHELL_COMMAND_TIMEOUT + ' ' + os.environ['CLANG_BIN_PATH'] + ' -O3 -lm '+full_path_header \
+    cmd1 = 'timeout ' + TEST_SHELL_COMMAND_TIMEOUT + ' ' + os.environ['CLANG_BIN_PATH'] + ' -O3 -lm -w '+full_path_header \
     +' ' +filename+' -o ' +filename[:-1]+'o'
     cmd2 = filename[:-1]+'o '
     os.system(cmd1)
@@ -225,16 +226,7 @@ def get_block(i,code):
 def get_vectorized_code(code):
     '''Used by get_vectorized_codes function to do the parsing 
     of a single code to detect the loops, inject commented pragmas,
-    and collect data.
-    
-    Params:
-        code: list[str] - Each code is read from files to a list of lines
-
-    Returns:
-        for_loop_indices: list[tuple[int, int]] - the beginning and end indices of a loop
-        pragma_indices: indice of the inserted pragma
-        new_code: Code after inserting the pragma before each loop
-    ''' 
+    and collect data.''' 
     new_code = []
     for_loops_indices = []
     i=0
@@ -247,7 +239,7 @@ def get_vectorized_code(code):
             orig_i=i
             while(i<ending+1):
                 if i==begining:
-                    new_code.append('//'+pragma_line.format(64,16))#start with -O3 vectorization
+                    new_code.append('//'+pragma_line.format(64,16,"disable"))#start with -O3 vectorization
                     num_elems_in_new_code += 1
                     pragma_indices.append(num_elems_in_new_code-1)
                 new_code.append(code[i])
